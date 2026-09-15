@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>소낙스 리더기 카드 정산관리</title><style>
+:root{--bg:#0b0e13;--card:#131820;--card2:#171d27;--line:#2a3342;--text:#f4f7fb;--muted:#9ca8b7;--green:#86efac;--red:#fca5a5;--yellow:#fde68a}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,"Noto Sans KR",sans-serif;font-size:14px}button,input,select{font:inherit}button{cursor:pointer}.app{max-width:1580px;margin:auto;padding:14px}.top{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-bottom:12px}.brand h1{font-size:22px;margin:0}.brand p{margin:4px 0 0;color:var(--muted)}.btn{border:1px solid #3a4557;background:#1a202a;color:#fff;border-radius:8px;padding:9px 12px;font-weight:700}.btn:hover{background:#252d39}.btn.primary{background:#fff;color:#111;border-color:#fff}.btn.danger{color:#fecaca;border-color:#7f1d1d}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}.toolbar{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:12px}.field{min-width:140px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}.input,.select{width:100%;background:#0e131a;color:#fff;border:1px solid #3a4557;border-radius:8px;padding:9px 10px;min-height:38px}.summary{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:8px;margin-bottom:12px}.kpi{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:11px}.kpi .k{font-size:12px;color:var(--muted)}.kpi .v{font-size:20px;font-weight:900;margin-top:4px}.kpi.green .v{color:var(--green)}.kpi.red .v{color:var(--red)}.kpi.yellow .v{color:var(--yellow)}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:10px;max-height:calc(100vh - 315px)}table{border-collapse:collapse;width:100%;min-width:1260px;background:#10151c}th,td{padding:8px;border-bottom:1px solid #242d39;text-align:left;white-space:nowrap}th{position:sticky;top:0;background:#1a2029;z-index:2;font-size:12px;color:#dbe3ed}tr:hover td{background:#141b24}.money{text-align:right;font-variant-numeric:tabular-nums}.status{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800}.status.ok{background:#14532d;color:#bbf7d0}.status.no{background:#3f1d1d;color:#fecaca}.tiny{font-size:12px;color:var(--muted)}.empty{padding:36px;text-align:center;color:var(--muted)}.settings{position:fixed;inset:0;z-index:200;background:#0b0e13;display:grid;grid-template-rows:auto auto minmax(0,1fr)}.hidden{display:none!important}.settings-head{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line)}.tabs{display:flex;gap:7px;padding:9px 16px;border-bottom:1px solid var(--line);overflow:auto}.tabs .active{background:#fff;color:#111}.settings-body{padding:14px;overflow:auto}.settings-grid{display:grid;grid-template-columns:minmax(340px,460px) minmax(500px,1fr);gap:12px}.list-row{display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-8px);z-index:999;background:#fff;color:#111;padding:10px 16px;border-radius:9px;font-weight:900;opacity:0;pointer-events:none;transition:.18s}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.note{background:#172033;border:1px solid #334155;border-radius:9px;padding:10px;color:#cbd5e1;margin-bottom:12px}@media(max-width:900px){.summary{grid-template-columns:repeat(2,minmax(130px,1fr))}.app{padding:8px}.top{align-items:flex-start}.brand h1{font-size:19px}.table-wrap{max-height:none}.settings-grid{grid-template-columns:1fr}}
+
+/* ===== V2 캘린더 중심 UI ===== */
+.calendar-head{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;overflow:hidden}
+.calendar-head div{padding:9px;text-align:center;font-weight:800;background:#1a2029;border-right:1px solid var(--line)}
+.calendar-head div:last-child{border-right:0}
+.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-left:1px solid var(--line);border-top:1px solid var(--line)}
+.day{min-height:148px;background:#10151c;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:7px;overflow:hidden}
+.day.other{opacity:.35}.day.today{outline:2px solid #fff;outline-offset:-2px}
+.day-num{font-weight:900;margin-bottom:5px;font-size:13px}.day-total{font-size:11px;color:var(--muted);margin-bottom:5px}
+.tx-chip{display:block;width:100%;text-align:left;border:1px solid transparent;border-radius:8px;padding:6px 7px;margin:4px 0;font-size:12px;line-height:1.35}
+.tx-chip.pending{background:#451a1a;border-color:#7f1d1d;color:#fecaca}.tx-chip.settled{background:#15351f;border-color:#166534;color:#bbf7d0}
+.tx-chip .amt{font-weight:900;font-size:13px}.tx-chip .meta{opacity:.9;margin-top:2px}
+.legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:6px 0 12px}.legend i{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:5px}
+.legend .p i{background:#7f1d1d}.legend .s i{background:#166534}
+.match-box{background:#111827;border:1px solid #334155;border-radius:12px;padding:12px;margin-bottom:12px}
+.match-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:9px}
+.match-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:7px}
+.match-card{border:1px solid #475569;background:#172033;color:#fff;border-radius:9px;padding:9px;text-align:left}
+.match-card:hover{background:#1e293b}.match-card .big{font-size:16px;font-weight:900}.match-card .sub{font-size:12px;color:#cbd5e1;margin-top:3px}
+.modal{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:12px}
+.modal-card{width:min(620px,96vw);max-height:92vh;overflow:auto;background:#111820;border:1px solid #475569;border-radius:14px}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:13px 15px;border-bottom:1px solid var(--line)}.modal-body{padding:15px}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.edit-grid .full{grid-column:1/-1}
+.detail-top{background:#0e131a;border:1px solid var(--line);border-radius:10px;padding:11px;margin-bottom:12px}.detail-top .big{font-size:20px;font-weight:900}
+.day-detail{margin-top:12px}.mobile-hint{display:none}
+@media(max-width:900px){.calendar{min-width:900px}.calendar-head{min-width:900px}.calendar-scroll{overflow:auto;-webkit-overflow-scrolling:touch}.day{min-height:135px}.mobile-hint{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}.edit-grid{grid-template-columns:1fr}}
+
+/* ===== V3 한 화면 캘린더 ===== */
+html,body{height:100%;overflow:hidden}
+.app{height:100vh;max-width:none;padding:10px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px}
+.top{margin:0}
+.main-card{min-height:0;display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:8px;padding:10px}
+.topbar{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.topbar .field{min-width:135px}
+.calendar-wrap{min-height:0;display:grid;grid-template-rows:34px minmax(0,1fr)}
+.calendar-head{min-width:0;height:34px}
+.calendar-head div{padding:7px 4px;font-size:12px}
+.calendar{min-width:0;height:100%;grid-auto-rows:minmax(0,1fr)}
+.day{min-height:0!important;padding:5px;overflow:hidden}
+.day-num{font-size:12px;margin-bottom:2px}.day-total{font-size:10px;margin-bottom:2px}
+.tx-chip{padding:4px 5px;margin:2px 0;font-size:11px;line-height:1.18}
+.tx-chip .amt{font-size:11px}.tx-chip .meta{font-size:10px;margin-top:1px}
+.summary{display:none!important}
+.legend{margin:0;font-size:12px}
+.mobile-hint{display:none!important}
+.search-pop{position:fixed;z-index:350;top:84px;left:50%;transform:translateX(-50%);width:min(760px,94vw);max-height:68vh;overflow:auto;background:#111820;border:1px solid #64748b;border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.55);padding:12px}
+.search-pop-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.search-result{display:grid;grid-template-columns:100px minmax(0,1fr) 130px;gap:8px;align-items:center;width:100%;text-align:left;background:#172033;color:#fff;border:1px solid #334155;border-radius:9px;padding:9px;margin:6px 0}
+.search-result:hover{background:#1e293b}
+.day-modal-list .person-row{display:grid;grid-template-columns:minmax(0,1fr) 120px auto;gap:8px;align-items:center;border-bottom:1px solid var(--line);padding:8px 0}
+@media(max-width:900px){
+  html,body{overflow:auto}
+  .app{height:auto;min-height:100vh}
+  .calendar-wrap{overflow:auto}
+  .calendar,.calendar-head{min-width:780px}
+  .day{min-height:110px!important}
+}
+
+/* ===== V5 예약관리형 고정 캘린더 ===== */
+html,body{height:100%;overflow:hidden}
+.app{height:100vh;max-width:none;padding:10px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px}
+.top{margin:0}
+.main-card{min-height:0;display:grid;grid-template-rows:auto 22px minmax(0,1fr);gap:7px;padding:10px}
+.topbar{display:grid;grid-template-columns:130px 155px 170px minmax(180px,1fr) 72px 65px auto;gap:7px;align-items:end}
+.topbar .field{min-width:0}
+.topbar .legend{align-self:center;justify-self:end;white-space:nowrap;margin:0}
+.calendar-wrap{min-height:0;height:100%;display:grid;grid-template-rows:32px minmax(0,1fr);overflow:hidden;border-radius:10px}
+.calendar-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));min-width:0!important;width:100%;height:32px;border:1px solid var(--line);border-bottom:0;border-radius:10px 10px 0 0;overflow:hidden}
+.calendar-head div{padding:7px 4px;text-align:center;font-weight:800;background:#1a2029;border-right:1px solid var(--line);font-size:12px}
+.calendar-head div:last-child{border-right:0}
+.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr));width:100%;height:100%;min-width:0!important;border-left:1px solid var(--line);border-top:1px solid var(--line);overflow:hidden}
+.day{min-width:0;min-height:0!important;height:auto;background:#10151c;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:5px;overflow:hidden}
+.day.other{opacity:.28}.day.today{outline:2px solid #fff;outline-offset:-2px}
+.day-num{font-weight:900;margin-bottom:2px;font-size:12px}.day-total{font-size:10px;color:var(--muted);margin-bottom:2px}
+.tx-chip{display:block;width:100%;text-align:left;border:1px solid transparent;border-radius:6px;padding:3px 5px;margin:2px 0;font-size:10px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tx-chip.pending{background:#451a1a;border-color:#7f1d1d;color:#fecaca}.tx-chip.settled{background:#15351f;border-color:#166534;color:#bbf7d0}
+.tx-chip .amt{font-weight:800;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tx-chip .meta{display:none}
+#monthSummary{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mobile-hint{display:none!important}
+@media(max-width:900px){
+  html,body{overflow:auto}
+  .app{height:auto;min-height:100vh}
+  .main-card{display:block}
+  .topbar{grid-template-columns:1fr 1fr}
+  .topbar .legend{grid-column:1/-1;justify-self:start}
+  .calendar-wrap{height:auto;overflow:visible}
+  .calendar-head,.calendar{min-width:0!important;width:100%}
+  .calendar{grid-template-rows:repeat(6,110px);height:auto}
+  .day{min-height:110px!important}
+}
+
+/* ===== V6 충돌 제거 / 실제 한 화면 고정 ===== */
+@media(min-width:901px){
+  body{min-width:0!important;overflow:hidden!important}
+  .app{width:100vw!important;height:100vh!important;overflow:hidden!important}
+  .main-card{height:100%!important;min-height:0!important;overflow:hidden!important}
+  .topbar{display:grid!important;grid-template-columns:140px 170px minmax(260px,1fr) 82px 70px auto!important;flex-wrap:nowrap!important;width:100%!important}
+  .calendar-wrap{display:grid!important;grid-template-rows:32px minmax(480px,1fr)!important;min-height:520px!important;width:100%!important;overflow:hidden!important}
+  .calendar-head,.calendar{width:100%!important;min-width:0!important;max-width:100%!important}
+  .calendar{display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;grid-template-rows:repeat(6,minmax(74px,1fr))!important;overflow:hidden!important}
+  .day{min-width:0!important;min-height:74px!important}
+}
+
+/* ===== V9 다중카드 / 묶음정산 ===== */
+.split-box{grid-column:1/-1;border:1px solid var(--line);border-radius:10px;padding:10px;background:#0d131b}
+.split-row{display:grid;grid-template-columns:minmax(140px,1fr) 150px 150px auto;gap:7px;align-items:end;margin-top:7px}
+.split-row .tiny{margin-bottom:5px}
+.split-total{display:flex;justify-content:space-between;gap:10px;margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-weight:900}
+.split-bad{color:#fca5a5}.split-ok{color:#86efac}
+.multi-card{position:relative;min-width:190px}
+.multi-card summary{list-style:none;cursor:pointer}
+.multi-card summary::-webkit-details-marker{display:none}
+.multi-card-panel{position:absolute;top:100%;left:0;z-index:360;width:240px;max-height:280px;overflow:auto;background:#111820;border:1px solid #475569;border-radius:9px;padding:8px;box-shadow:0 12px 30px rgba(0,0,0,.5)}
+.multi-card-panel label{display:flex;gap:7px;align-items:center;padding:7px;border-radius:6px}
+.multi-card-panel label:hover{background:#1e293b}
+.batch-pop{position:fixed;z-index:370;top:72px;left:50%;transform:translateX(-50%);width:min(980px,96vw);max-height:82vh;overflow:auto;background:#0f151d;border:1px solid #64748b;border-radius:14px;box-shadow:0 20px 70px rgba(0,0,0,.65);padding:12px}
+.batch-head{display:flex;justify-content:space-between;gap:10px;align-items:center;position:sticky;top:-12px;background:#0f151d;padding:10px 0;z-index:2}
+.batch-summary{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:7px;margin:10px 0}
+.batch-kpi{background:#172033;border:1px solid #334155;border-radius:9px;padding:9px}
+.batch-kpi .k{font-size:11px;color:#94a3b8}.batch-kpi .v{font-size:16px;font-weight:900;margin-top:3px}
+.batch-row{display:grid;grid-template-columns:34px 95px minmax(120px,1fr) 110px 120px 120px;gap:7px;align-items:center;padding:8px;border-bottom:1px solid #273244}
+.batch-row:hover{background:#151e2a}
+.batch-row input[type=checkbox]{width:18px;height:18px}
+.sales-table{width:100%;border-collapse:collapse}
+.sales-table th,.sales-table td{padding:9px;border-bottom:1px solid var(--line)}
+.sales-table th{text-align:left;color:#cbd5e1}.sales-table .money{text-align:right}
+@media(max-width:900px){
+  .split-row{grid-template-columns:1fr 1fr}.batch-summary{grid-template-columns:1fr 1fr}
+  .batch-row{grid-template-columns:30px 85px 1fr 100px}.batch-row .hide-mobile{display:none}
+}
+
+/* ===== V11 모바일 카드사별 매출 화면 ===== */
+.sales-mobile{display:none}
+@media(max-width:700px){
+  .sales-table-wrap{display:none}
+  .sales-mobile{display:block}
+  .sales-mobile-card{
+    background:#111820;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:11px;
+    margin-bottom:9px;
+  }
+  .sales-mobile-card .sales-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .sales-mobile-card .sales-title b{font-size:16px}
+  .sales-mobile-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:7px;
+  }
+  .sales-mobile-item{
+    background:#0d131a;
+    border:1px solid #263140;
+    border-radius:8px;
+    padding:8px;
+  }
+  .sales-mobile-item .k{
+    color:var(--muted);
+    font-size:11px;
+    margin-bottom:3px;
+  }
+  .sales-mobile-item .v{
+    font-size:14px;
+    font-weight:900;
+    word-break:break-all;
+  }
+  .sales-mobile-total{
+    background:#172033;
+    border-color:#475569;
+  }
+  .settings-body{padding:9px}
+  .settings .card{padding:10px}
+}
+</style></head><body><div id="toast" class="toast">저장되었습니다</div><main class="app"><div class="top"><div class="brand"><h1>리더기 카드 정산관리</h1><p>예약 백업 → 리더기 결제 추출 → 카드사별 실제 입금/수수료 확인</p></div><div style="display:flex;gap:7px"><button id="importBackupBtn" class="btn primary">예약 백업 불러오기</button><input id="importBackupFile" class="hidden" type="file" accept=".json,application/json" multiple><button id="openSettings" class="btn">설정</button></div></div><section class="card main-card">
+  <div class="topbar">
+  <div class="field"><label>조회 월</label><input id="monthFilter" type="month" class="input"></div>
+  <div class="field"><label>캘린더 카드사</label><select id="cardFilter" class="select"><option value="">전체 카드사</option></select></div>
+  <details id="batchCardSelect" class="multi-card"><summary class="btn">묶음 카드사 선택</summary><div id="batchCardPanel" class="multi-card-panel"></div></details>
+  <div class="field"><label>입금액 검색</label><input id="depositSearch" class="input" inputmode="numeric" placeholder="예: 97,800"></div>
+  <button id="depositSearchBtn" class="btn primary">검색</button>
+  <button id="depositClearBtn" class="btn">지우기</button>
+  <div class="legend"><span class="p"><i></i>미정산</span><span class="s"><i></i>정산완료</span></div>
+</div>
+<div id="monthSummary" class="tiny"></div>
+
+  <div class="calendar-wrap">
+    <div class="calendar-head"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+    <div id="calendar" class="calendar"></div>
+  </div>
+</section></main><div id="txEditModal" class="modal hidden"><div class="modal-card"><div class="modal-head"><div><b>정산 정보</b><div id="editMeta" class="tiny"></div></div><button id="closeTxEdit" class="btn">닫기</button></div><div class="modal-body"><div class="detail-top"><div id="editPayment" class="big">0원</div><div id="editVehicle" class="tiny"></div></div><div class="edit-grid">
+  <div><label class="tiny">전체 결제금액</label><input id="editPaymentAmount" class="input" inputmode="numeric"></div>
+  <div><label class="tiny">정산일</label><input id="editSettlementDate" class="input" type="date"></div>
+  <div class="split-box">
+    <div style="display:flex;justify-content:space-between;align-items:center"><b>카드 결제 분할</b><button id="addCardSplit" class="btn">+ 카드 추가</button></div>
+    <div class="tiny">기본은 카드 1개입니다. 두 장으로 나눠 결제한 경우 카드 추가 후 각각 금액을 입력하세요.</div>
+    <div id="cardSplitRows"></div>
+    <div class="split-total"><span>분할 결제 합계</span><span id="splitTotal">0원</span></div>
+  </div>
+  <div><label class="tiny">전체 실제 입금액</label><input id="editSettledAmount" class="input" inputmode="numeric" readonly></div>
+  <div><label class="tiny">전체 수수료</label><input id="editFee" class="input" readonly></div>
+  <div class="full"><label class="tiny">메모</label><input id="editMemo" class="input" placeholder="메모"></div>
+</div><div class="toolbar" style="justify-content:flex-end;margin-top:14px;margin-bottom:0"><button id="editClearSettlement" class="btn">미정산으로 변경</button><button id="saveTxEdit" class="btn">카드정보 저장</button><button id="completeSettlement" class="btn primary">정산완료</button><button id="deleteTxEdit" class="btn danger">삭제</button></div></div></div></div>
+<div id="searchPopup" class="search-pop hidden">
+  <div class="search-pop-head"><div><b>입금액 검색 결과</b><div id="searchPopupMeta" class="tiny"></div></div><button id="closeSearchPopup" class="btn">닫기</button></div>
+  <div id="searchPopupBody"></div>
+</div>
+
+<div id="dayModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><div><b id="dayModalTitle">결제 내역</b><div id="dayModalMeta" class="tiny"></div></div><button id="closeDayModal" class="btn">닫기</button></div>
+    <div class="modal-body"><div id="dayModalBody" class="day-modal-list"></div></div>
+  </div>
+</div>
+
+<div id="batchPopup" class="batch-pop hidden">
+  <div class="batch-head">
+    <div><b style="font-size:18px">묶음 정산 맞추기</b><div id="batchMeta" class="tiny"></div></div>
+    <button id="closeBatchPopup" class="btn">닫기</button>
+  </div>
+  <div class="batch-summary">
+    <div class="batch-kpi"><div class="k">실제 입금액</div><div id="batchDeposit" class="v">0원</div></div>
+    <div class="batch-kpi"><div class="k">선택 결제합계</div><div id="batchPaymentTotal" class="v">0원</div></div>
+    <div class="batch-kpi"><div class="k">예상 수수료</div><div id="batchFeeTotal" class="v">0원</div></div>
+    <div class="batch-kpi"><div class="k">예상 입금합계</div><div id="batchExpectedTotal" class="v">0원</div></div>
+    <div class="batch-kpi"><div class="k">남은 차액</div><div id="batchRemain" class="v">0원</div></div>
+  </div>
+  <div id="batchRows"></div>
+  <div class="toolbar" style="justify-content:flex-end;margin-top:12px">
+    <button id="batchComplete" class="btn primary">선택 건 정산완료</button>
+  </div>
+</div>
+<div id="settings" class="settings hidden"><div class="settings-head"><div><b style="font-size:20px">설정</b><div class="tiny">카드사·자동입금 규칙·데이터 백업을 관리합니다.</div></div><button id="closeSettings" class="btn">닫기</button></div><div class="tabs"><button class="btn active" data-tab="cards">카드사 관리</button><button class="btn" data-tab="rules">자동입금 규칙</button><button class="btn" data-tab="sales">카드사별 매출</button><button class="btn" data-tab="backup">백업 / 복원</button></div><div id="settingsBody" class="settings-body"></div></div>
+<script>
+const APP_KEY="sonax_reader_settlement_v1",DEFAULT_STATE={version:1,cardCompanies:["신한카드","KB국민카드","삼성카드","현대카드","롯데카드","하나카드","NH농협카드","BC카드"],cardFees:{},transactions:[],rules:{},batches:[]};let state=loadState(),currentTab="cards";function clone(v){return JSON.parse(JSON.stringify(v))}function loadState(){try{const x=JSON.parse(localStorage.getItem(APP_KEY)||"null");if(x&&x.transactions){x.cardFees=x.cardFees||{};x.rules=x.rules||{};x.cardCompanies=x.cardCompanies||[];x.batches=x.batches||[];return x}return clone(DEFAULT_STATE)}catch(_){return clone(DEFAULT_STATE)}}function persist(msg){localStorage.setItem(APP_KEY,JSON.stringify(state));if(msg)toast(msg);render()}function toast(msg){const e=document.getElementById("toast");e.textContent=msg;e.classList.remove("show");void e.offsetWidth;e.classList.add("show");clearTimeout(window._toast);window._toast=setTimeout(()=>e.classList.remove("show"),1600)}function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}function money(n){return Math.max(0,Number(n||0)).toLocaleString("ko-KR")+"원"}function parseMoney(v){return Math.max(0,Number(String(v??"").replace(/[^\d]/g,""))||0)}function fmtInput(v){const n=parseMoney(v);return n?n.toLocaleString("ko-KR"):""}function dateKey(v){return String(v||"").slice(0,10)}function monthOf(v){return dateKey(v).slice(0,7)}function uid(){return"tx_"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}function ruleKey(card,amount){return String(card||"").trim()+"|"+Math.max(0,Number(amount||0))}function feeOf(t){return Math.max(0,Number(t.paymentAmount||0)-Number(t.settledAmount||0))}
+function configuredCardFeeRate(card){
+  const v=Number((state.cardFees||{})[card]);
+  return Number.isFinite(v)&&v>=0?v/100:null;
+}
+function learnedCardFeeRate(card){
+  if(!card)return null;
+  const rules=Object.values(state.rules||{}).filter(r=>r.cardCompany===card&&Number(r.paymentAmount)>0&&Number(r.settledAmount)>0);
+  const rates=rules.map(r=>(Number(r.paymentAmount)-Number(r.settledAmount))/Number(r.paymentAmount)).filter(x=>x>=0&&x<0.1);
+  if(!rates.length)return null;
+  return rates.reduce((a,x)=>a+x,0)/rates.length;
+}
+function cardExpectedRate(card){
+  const configured=configuredCardFeeRate(card);
+  return configured!=null?configured:learnedCardFeeRate(card);
+}
+function exactAutoSettledAmount(card,payment){
+  const r=state.rules[ruleKey(card,payment)];
+  return r&&Number(r.settledAmount||0)>0?Number(r.settledAmount):0;
+}
+function expectedSettledAmount(card,payment){
+  const exact=exactAutoSettledAmount(card,payment);
+  if(exact>0)return exact;
+  const rate=cardExpectedRate(card);
+  return rate==null?0:Math.max(0,Math.round(Number(payment||0)*(1-rate)));
+}
+function effectiveSettledAmount(t){
+  if(isSettled(t)&&Number(t.settledAmount||0)>0)return Number(t.settledAmount||0);
+  if(Number(t.expectedSettledAmount||0)>0)return Number(t.expectedSettledAmount||0);
+  return t.cardCompany?expectedSettledAmount(t.cardCompany,t.paymentAmount):0;
+}
+function feeRate(t){const p=Number(t.paymentAmount||0);return p>0&&Number(t.settledAmount||0)>0?feeOf(t)/p*100:0}function isSettled(t){return Array.isArray(t.cardSplits)&&t.cardSplits.length?transactionSettled(t):(t.settlementCompleted===true || (!!t.settlementDate&&Number(t.settledAmount||0)>0))}
+function applyRule(tx,force){if(!tx.cardCompany)return;if(tx.manualOverride&&!force)return;const r=state.rules[ruleKey(tx.cardCompany,tx.paymentAmount)];if(r&&Number(r.settledAmount||0)>0){tx.settledAmount=Number(r.settledAmount);tx.manualOverride=false}}function learnRule(tx){if(!tx.cardCompany||!Number(tx.settledAmount||0))return;state.rules[ruleKey(tx.cardCompany,tx.paymentAmount)]={cardCompany:tx.cardCompany,paymentAmount:Number(tx.paymentAmount||0),settledAmount:Number(tx.settledAmount||0),updatedAt:new Date().toISOString()}}function syncAllRules(){state.transactions.forEach(t=>applyRule(t,false))}
+
+function makeSplit(card="",amount=0){
+  return {id:"sp_"+Math.random().toString(36).slice(2,9),cardCompany:card||"",amount:Number(amount||0),expectedSettledAmount:0,settledAmount:0,settlementCompleted:false,settlementDate:"",batchId:""};
+}
+function ensureSplits(t){
+  if(!Array.isArray(t.cardSplits)||!t.cardSplits.length){
+    const s=makeSplit(t.cardCompany||"",t.paymentAmount||0);
+    s.expectedSettledAmount=Number(t.expectedSettledAmount||0);
+    s.settledAmount=Number(t.settledAmount||0);
+    s.settlementCompleted=(t.settlementCompleted===true || (!!t.settlementDate&&Number(t.settledAmount||0)>0));
+    s.settlementDate=t.settlementDate||"";
+    t.cardSplits=[s];
+  }
+  t.cardSplits.forEach(s=>{
+    s.id=s.id||("sp_"+Math.random().toString(36).slice(2,9));
+    s.cardCompany=s.cardCompany||"";
+    s.amount=Number(s.amount||0);
+    s.expectedSettledAmount=Number(s.expectedSettledAmount||0);
+    s.settledAmount=Number(s.settledAmount||0);
+    s.settlementCompleted=!!s.settlementCompleted;
+    s.settlementDate=s.settlementDate||"";
+    s.batchId=s.batchId||"";
+  });
+  return t.cardSplits;
+}
+function splitExpected(s){
+  if(Number(s.settledAmount||0)>0&&s.settlementCompleted)return Number(s.settledAmount);
+  if(Number(s.expectedSettledAmount||0)>0)return Number(s.expectedSettledAmount);
+  return s.cardCompany?expectedSettledAmount(s.cardCompany,s.amount):0;
+}
+function splitSettled(s){return s.settlementCompleted===true&&Number(s.settledAmount||0)>0}
+function transactionSettled(t){
+  const ss=ensureSplits(t);
+  return ss.length>0&&ss.every(s=>splitSettled(s));
+}
+function syncLegacyFromSplits(t){
+  const ss=ensureSplits(t);
+  t.cardCompany=ss.length===1?ss[0].cardCompany:"다중카드";
+  t.settledAmount=ss.reduce((a,s)=>a+(splitSettled(s)?Number(s.settledAmount||0):0),0);
+  t.expectedSettledAmount=ss.reduce((a,s)=>a+Number(splitExpected(s)||0),0);
+  t.settlementCompleted=ss.length>0&&ss.every(s=>splitSettled(s));
+  const dates=ss.filter(s=>s.settlementDate).map(s=>s.settlementDate).sort();
+  t.settlementDate=dates.length?dates[dates.length-1]:"";
+}
+function displayCustomer(t){return String((t&&t.customerName)||"").trim()||"예약결제";}
+function importReservationBackup(raw,fileName){const rs=Array.isArray(raw.reservations)?raw.reservations:(raw.data&&Array.isArray(raw.data.reservations)?raw.data.reservations:[]),cs=Array.isArray(raw.customers)?raw.customers:(raw.data&&Array.isArray(raw.data.customers)?raw.data.customers:[]);if(!rs.length)throw new Error("reservations 없음");const cmap={};cs.forEach(c=>cmap[String(c.id||"")]=c);let added=0,updated=0;rs.forEach(r=>{if(String(r.payment||"")!=="리더기"||String(r.status||"")!=="paid")return;const amount=Math.max(0,Number(r.finalAmount!=null?r.finalAmount:r.baseAmount||0));if(!amount)return;const paidDate=dateKey(r.paymentCompletedAt||r.paidAt||r.date);if(!paidDate)return;const sourceId=String(r.id||uid()),c=cmap[String(r.customerId||"")]||{};let tx=state.transactions.find(x=>x.sourceReservationId===sourceId);const customerName=String(c.name||"미확인"),vehicleMain=String(c.vehicleMain||""),vehicleSize=String(c.vehicleSize||""),vehicleModel=String(c.vehicleModel||"");if(!tx){tx={id:uid(),sourceReservationId:sourceId,sourceFile:fileName||"",paymentDate:paidDate,paymentAmount:amount,customerName,vehicleMain,vehicleSize,vehicleModel,cardCompany:"",settlementDate:"",settledAmount:0,expectedSettledAmount:0,settlementCompleted:false,memo:"",manualOverride:false};state.transactions.push(tx);added++}else{tx.paymentDate=paidDate;tx.paymentAmount=amount;tx.sourceFile=fileName||tx.sourceFile;if(customerName)tx.customerName=customerName;if(vehicleMain)tx.vehicleMain=vehicleMain;if(vehicleSize)tx.vehicleSize=vehicleSize;if(vehicleModel)tx.vehicleModel=vehicleModel;updated++}applyRule(tx,false)});state.transactions.sort((a,b)=>(a.paymentDate+a.id).localeCompare(b.paymentDate+b.id));localStorage.setItem(APP_KEY,JSON.stringify(state));return{added,updated}}
+function filteredRows(){
+  const month=document.getElementById("monthFilter")?.value||"";
+  const card=document.getElementById("cardFilter")?.value||"";
+  return state.transactions.filter(t=>(!month||monthOf(t.paymentDate)===month)&&(!card||t.cardCompany===card))
+    .sort((a,b)=>(a.paymentDate+a.id).localeCompare(b.paymentDate+b.id));
+}
+function daysInMonth(y,m){return new Date(y,m,0).getDate()}
+function render(){
+  if(document.getElementById("batchCardPanel"))renderBatchCardPanel();
+  state.transactions=(state.transactions||[]).filter(t=>t&&typeof t==="object");
+  state.transactions.forEach(t=>{
+    t.paymentDate=String(t.paymentDate||"").slice(0,10);
+    t.paymentAmount=Math.max(0,Number(t.paymentAmount||0));
+    ensureSplits(t);syncLegacyFromSplits(t);
+  });
+  const cf=document.getElementById("cardFilter"),wanted=cf.value;
+  cf.innerHTML='<option value="">전체 카드사</option>'+state.cardCompanies.map(c=>'<option>'+esc(c)+'</option>').join("");
+  if(state.cardCompanies.includes(wanted))cf.value=wanted;
+  let month=document.getElementById("monthFilter").value;if(!month){month=new Date().toISOString().slice(0,7);document.getElementById("monthFilter").value=month;}
+  const rows=state.transactions.filter(t=>(!month||monthOf(t.paymentDate)===month) && (!wanted||ensureSplits(t).some(s=>s.cardCompany===wanted)))
+    .sort((a,b)=>(a.paymentDate+a.id).localeCompare(b.paymentDate+b.id));
+  const pay=rows.reduce((a,t)=>a+Number(t.paymentAmount||0),0);
+  const settled=rows.filter(t=>isSettled(t)).reduce((a,t)=>a+Number(t.settledAmount||0),0);
+  const pending=rows.filter(t=>!isSettled(t)).reduce((a,t)=>a+Number(t.paymentAmount||0),0);
+  document.getElementById("monthSummary").textContent=month+" · "+rows.length+"건 · 결제 "+money(pay)+" · 정산 "+money(settled)+" · 미정산 "+money(pending);
+
+  const cal=document.getElementById("calendar");if(!month){cal.innerHTML="";return}
+  const [y,m]=month.split("-").map(Number),firstDate=new Date(y,m-1,1),firstDow=firstDate.getDay(),gridStart=new Date(y,m-1,1-firstDow),cells=[];
+  const today=dateKey(new Date().toISOString());
+  for(let i=0;i<42;i++){
+    const cur=new Date(gridStart);cur.setDate(gridStart.getDate()+i);
+    const ds=cur.getFullYear()+"-"+String(cur.getMonth()+1).padStart(2,"0")+"-"+String(cur.getDate()).padStart(2,"0");
+    const inMonth=(cur.getMonth()===m-1);
+    const dr=inMonth?rows.filter(t=>t.paymentDate===ds):[];
+    const total=dr.reduce((a,t)=>a+Number(t.paymentAmount||0),0);
+    const chips=dr.slice(0,3).map(t=>'<button class="tx-chip '+(isSettled(t)?'settled':'pending')+'" data-tx="'+esc(t.id)+'"><div class="amt">'+esc(displayCustomer(t))+' · '+money(t.paymentAmount)+'</div></button>').join("");
+    const more=dr.length>3?'<button class="tx-chip" data-daymore="'+ds+'">외 '+(dr.length-3)+'건</button>':'';
+    cells.push('<div class="day '+(!inMonth?'other ':'')+(ds===today?'today':'')+'" '+(inMonth?'data-day="'+ds+'"':'')+'><div class="day-num">'+cur.getDate()+'일</div>'+(dr.length?'<div class="day-total">'+dr.length+'건 · '+money(total)+'</div>':'')+chips+more+'</div>');
+  }
+  cal.innerHTML=cells.join("");
+  cal.querySelectorAll("[data-tx]").forEach(b=>b.onclick=e=>{e.stopPropagation();openTxEdit(b.dataset.tx)});
+  cal.querySelectorAll("[data-day],[data-daymore]").forEach(b=>b.onclick=e=>{e.stopPropagation();openDayModal(b.dataset.day||b.dataset.daymore)});
+}
+function openDayModal(day){
+  const rows=state.transactions.filter(t=>t.paymentDate===day).sort((a,b)=>Number(a.paymentAmount)-Number(b.paymentAmount));
+  document.getElementById("dayModalTitle").textContent=day+" 결제";
+  document.getElementById("dayModalMeta").textContent=rows.length+"건 · "+money(rows.reduce((a,t)=>a+Number(t.paymentAmount||0),0));
+  const body=document.getElementById("dayModalBody");
+  body.innerHTML=rows.length?rows.map(t=>'<div class="person-row"><div><b>'+esc(displayCustomer(t))+'</b><div class="tiny">'+(isSettled(t)?'정산완료':'미정산')+(t.cardCompany?' · '+esc(t.cardCompany):'')+(!isSettled(t)&&effectiveSettledAmount(t)>0?' · 예상 '+money(effectiveSettledAmount(t)):'')+'</div></div><div class="money"><b>'+money(t.paymentAmount)+'</b></div><button class="btn" data-daytx="'+esc(t.id)+'">선택</button></div>').join(""):'<div class="empty">결제 내역 없음</div>';
+  body.querySelectorAll("[data-daytx]").forEach(b=>b.onclick=()=>{document.getElementById("dayModal").classList.add("hidden");openTxEdit(b.dataset.daytx)});
+  document.getElementById("dayModal").classList.remove("hidden");
+}
+let editingTxId="";
+function renderCardSplitRows(){
+  const t=state.transactions.find(x=>x.id===editingTxId);if(!t)return;
+  const ss=ensureSplits(t),wrap=document.getElementById("cardSplitRows");
+  wrap.innerHTML=ss.map((s,i)=>'<div class="split-row" data-split="'+esc(s.id)+'">'+
+    '<div><div class="tiny">카드사 '+(i+1)+'</div><select class="select sp-card"><option value="">카드사 선택</option>'+state.cardCompanies.map(c=>'<option '+(c===s.cardCompany?'selected':'')+'>'+esc(c)+'</option>').join("")+'</select></div>'+
+    '<div><div class="tiny">결제금액</div><input class="input sp-amount" inputmode="numeric" value="'+fmtInput(s.amount)+'"></div>'+
+    '<div><div class="tiny">'+(splitSettled(s)?'실제 입금액':'예상 입금액')+'</div><input class="input sp-settled" inputmode="numeric" value="'+fmtInput(splitSettled(s)?s.settledAmount:splitExpected(s))+'"></div>'+
+    '<button class="btn danger sp-del" '+(ss.length===1?'disabled':'')+'>삭제</button></div>').join("");
+  wrap.querySelectorAll(".split-row").forEach(row=>{
+    const s=ss.find(x=>x.id===row.dataset.split),card=row.querySelector(".sp-card"),amt=row.querySelector(".sp-amount"),settled=row.querySelector(".sp-settled");
+    amt.oninput=()=>{amt.value=fmtInput(amt.value);s.amount=parseMoney(amt.value);if(card.value&&!splitSettled(s)){s.expectedSettledAmount=expectedSettledAmount(card.value,s.amount);settled.value=fmtInput(s.expectedSettledAmount)}updateSplitTotals()};
+    card.onchange=()=>{s.cardCompany=card.value;if(!splitSettled(s)){s.expectedSettledAmount=expectedSettledAmount(s.cardCompany,s.amount);settled.value=fmtInput(s.expectedSettledAmount)}updateSplitTotals()};
+    settled.oninput=()=>{settled.value=fmtInput(settled.value);if(splitSettled(s))s.settledAmount=parseMoney(settled.value);else s.expectedSettledAmount=parseMoney(settled.value);updateSplitTotals()};
+    row.querySelector(".sp-del").onclick=()=>{if(ss.length<=1)return;t.cardSplits=ss.filter(x=>x.id!==s.id);renderCardSplitRows();updateSplitTotals()};
+  });
+  updateSplitTotals();
+}
+function updateSplitTotals(){
+  const t=state.transactions.find(x=>x.id===editingTxId);if(!t)return;
+  const totalPayment=parseMoney(document.getElementById("editPaymentAmount").value)||Number(t.paymentAmount||0);
+  const ss=ensureSplits(t),splitTotal=ss.reduce((a,s)=>a+Number(s.amount||0),0);
+  const totalExpected=ss.reduce((a,s)=>a+Number(splitSettled(s)?s.settledAmount:splitExpected(s)),0);
+  const fee=Math.max(0,splitTotal-totalExpected);
+  const el=document.getElementById("splitTotal");
+  el.textContent=money(splitTotal)+" / 전체 "+money(totalPayment);
+  el.className=splitTotal===totalPayment?"split-ok":"split-bad";
+  document.getElementById("editSettledAmount").value=fmtInput(totalExpected);
+  document.getElementById("editFee").value=totalExpected?money(fee)+" · "+(fee/Math.max(1,splitTotal)*100).toFixed(3)+"%":"";
+  document.getElementById("editPayment").textContent=money(totalPayment);
+}
+function openTxEdit(id,prefillAmount){
+  const t=state.transactions.find(x=>x.id===id);if(!t)return;editingTxId=id;ensureSplits(t);
+  document.getElementById("editMeta").textContent=t.paymentDate+" · "+displayCustomer(t)+" · "+(isSettled(t)?"정산완료":"미정산");
+  document.getElementById("editPayment").textContent=money(t.paymentAmount);
+  document.getElementById("editPaymentAmount").value=fmtInput(t.paymentAmount);
+  document.getElementById("editVehicle").textContent=displayCustomer(t);
+  document.getElementById("editSettlementDate").value=t.settlementDate||"";
+  document.getElementById("editMemo").value=t.memo||"";
+  renderCardSplitRows();
+  if(prefillAmount!=null&&ensureSplits(t).length===1&&!splitSettled(t.cardSplits[0])){
+    t.cardSplits[0].expectedSettledAmount=Number(prefillAmount);
+    renderCardSplitRows();
+  }
+  document.getElementById("txEditModal").classList.remove("hidden");
+}
+function updateEditFee(){updateSplitTotals()}
+function cardFeeRange(card,payment){
+  if(card){
+    const rules=Object.values(state.rules).filter(r=>r.cardCompany===card&&Number(r.paymentAmount)>0&&Number(r.settledAmount)>0);
+    if(rules.length){
+      const rates=rules.map(r=>(Number(r.paymentAmount)-Number(r.settledAmount))/Number(r.paymentAmount)).filter(x=>x>=0&&x<0.1);
+      if(rates.length){
+        const avg=rates.reduce((a,x)=>a+x,0)/rates.length;
+        return {min:Math.max(0,avg-0.006),max:Math.min(0.08,avg+0.006)};
+      }
+    }
+  }
+  return {min:0.005,max:0.04};
+}
+function selectedBatchCards(){
+  return [...document.querySelectorAll("#batchCardPanel input:checked")].map(x=>x.value);
+}
+function renderBatchCardPanel(){
+  const p=document.getElementById("batchCardPanel");if(!p)return;
+  const selected=new Set(selectedBatchCards());
+  p.innerHTML='<label><input type="checkbox" id="batchAllCards"> 전체 카드사</label>'+state.cardCompanies.map(c=>'<label><input class="batch-card-check" type="checkbox" value="'+esc(c)+'" '+(selected.has(c)?'checked':'')+'> '+esc(c)+'</label>').join("");
+  document.getElementById("batchAllCards").onchange=e=>{p.querySelectorAll(".batch-card-check").forEach(x=>x.checked=e.target.checked)};
+}
+let batchDepositValue=0,batchCandidateMap={};
+function searchDeposit(){
+  const deposit=parseMoney(document.getElementById("depositSearch").value);if(!deposit)return alert("입금액을 입력하세요.");
+  let cards=selectedBatchCards();if(!cards.length)cards=[...state.cardCompanies];
+  const allParts=[];
+  state.transactions.forEach(t=>ensureSplits(t).forEach(s=>{
+    if(!splitSettled(s)&&s.cardCompany&&cards.includes(s.cardCompany)){
+      allParts.push({t,s,date:t.paymentDate});
+    }
+  }));
+  if(!allParts.length)return alert("선택한 카드사의 미정산 결제가 없습니다.");
+  const latest=allParts.map(x=>x.date).sort().slice(-1)[0];
+  const endDate=new Date(latest+"T12:00:00"),startDate=new Date(endDate);startDate.setDate(endDate.getDate()-7);
+  const startKey=dateKey(startDate.toISOString()),endKey=dateKey(endDate.toISOString());
+  const candidates=allParts.filter(x=>x.date>=startKey&&x.date<=endKey).sort((a,b)=>a.date.localeCompare(b.date)||a.s.cardCompany.localeCompare(b.s.cardCompany));
+  batchDepositValue=deposit;batchCandidateMap={};
+  document.getElementById("batchMeta").textContent=startKey+" ~ "+endKey+" · "+cards.join(", ")+" · 후보 "+candidates.length+"건";
+  document.getElementById("batchDeposit").textContent=money(deposit);
+  const rows=document.getElementById("batchRows");
+  rows.innerHTML=candidates.length?'<div class="batch-row" style="font-weight:800;background:#172033"><span></span><span>결제일</span><span>고객 / 카드사</span><span>결제금액</span><span class="hide-mobile">예상입금</span><span class="hide-mobile">수수료</span></div>'+
+    candidates.map((x,i)=>{
+      const key="bc_"+i,expected=splitExpected(x.s),fee=Math.max(0,Number(x.s.amount)-expected);batchCandidateMap[key]=x;
+      return '<label class="batch-row"><input class="batch-check" type="checkbox" value="'+key+'"><span>'+esc(x.date)+'</span><span>'+esc(displayCustomer(x.t))+'<div class="tiny">'+esc(x.s.cardCompany)+'</div></span><span class="money">'+money(x.s.amount)+'</span><span class="money hide-mobile">'+money(expected)+'</span><span class="money hide-mobile">'+money(fee)+'</span></label>';
+    }).join(""):'<div class="empty">최근 7일 후보가 없습니다.</div>';
+  rows.querySelectorAll(".batch-check").forEach(x=>x.onchange=updateBatchTotals);
+  updateBatchTotals();document.getElementById("batchPopup").classList.remove("hidden");
+}
+function updateBatchTotals(){
+  const keys=[...document.querySelectorAll(".batch-check:checked")].map(x=>x.value);
+  let payment=0,expected=0;
+  keys.forEach(k=>{const x=batchCandidateMap[k];if(x){payment+=Number(x.s.amount||0);expected+=Number(splitExpected(x.s)||0)}});
+  const fee=Math.max(0,payment-expected),remain=batchDepositValue-expected;
+  document.getElementById("batchPaymentTotal").textContent=money(payment);
+  document.getElementById("batchFeeTotal").textContent=money(fee);
+  document.getElementById("batchExpectedTotal").textContent=money(expected);
+  const r=document.getElementById("batchRemain");r.textContent=(remain<0?"-":"")+money(Math.abs(remain));r.style.color=Math.abs(remain)<=100?"#86efac":"#fca5a5";
+}
+function renderSettings(){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===currentTab));const b=document.getElementById('settingsBody');if(currentTab==='cards'){
+  b.innerHTML='<div class="settings-grid">'+
+    '<div class="card"><b>카드사 추가</b><div class="toolbar" style="margin-top:12px"><input id="newCard" class="input" placeholder="카드사명"><input id="newCardFee" class="input" inputmode="decimal" placeholder="수수료율 % 예: 2.1"><button id="addCard" class="btn primary">추가</button></div><div class="tiny">수수료율을 입력하면 예상 입금액 = 결제금액 - 카드수수료로 자동 계산됩니다.</div></div>'+
+    '<div class="card"><b>등록 카드사 / 수수료율</b><div id="cardList" style="margin-top:10px"></div></div></div>';
+  const draw=()=>{
+    const list=document.getElementById('cardList');
+    list.innerHTML=state.cardCompanies.map(c=>{
+      const configured=(state.cardFees||{})[c];
+      const learned=learnedCardFeeRate(c);
+      const shown=configured!=null?Number(configured).toFixed(3):(learned!=null?(learned*100).toFixed(3):'');
+      const source=configured!=null?'직접 설정':(learned!=null?'실제 정산에서 자동 계산':'미설정');
+      return '<div class="list-row" style="grid-template-columns:minmax(150px,1fr) 140px minmax(130px,1fr) auto auto">'+
+        '<input class="input card-name" value="'+esc(c)+'">'+
+        '<input class="input card-fee" inputmode="decimal" value="'+esc(shown)+'" placeholder="수수료율 %">'+
+        '<span class="tiny">'+source+'</span>'+
+        '<button class="btn card-save">수정</button><button class="btn danger card-del">삭제</button></div>';
+    }).join('');
+    [...list.children].forEach((row,i)=>{
+      row.querySelector('.card-save').onclick=()=>{
+        const old=state.cardCompanies[i],v=row.querySelector('.card-name').value.trim();
+        const feeRaw=row.querySelector('.card-fee').value.trim().replace(',','.');
+        const fee=feeRaw===''?null:Number(feeRaw);
+        if(!v)return;
+        if(fee!=null&&(!Number.isFinite(fee)||fee<0||fee>=10))return alert('수수료율은 0% 이상 10% 미만으로 입력하세요.');
+        if(state.cardCompanies.some((x,j)=>j!==i&&x===v))return alert('이미 등록된 카드사입니다.');
+        state.cardCompanies[i]=v;
+        state.cardFees=state.cardFees||{};
+        if(old!==v&&Object.prototype.hasOwnProperty.call(state.cardFees,old)){state.cardFees[v]=state.cardFees[old];delete state.cardFees[old]}
+        if(fee==null)delete state.cardFees[v];else state.cardFees[v]=fee;
+        state.transactions.forEach(t=>{if(t.cardCompany===old){t.cardCompany=v;if(!isSettled(t))t.expectedSettledAmount=expectedSettledAmount(v,t.paymentAmount)}});
+        Object.values(state.rules).forEach(r=>{if(r.cardCompany===old)r.cardCompany=v});
+        const rules={};Object.values(state.rules).forEach(r=>rules[ruleKey(r.cardCompany,r.paymentAmount)]=r);state.rules=rules;
+        persist('카드사와 수수료율이 저장되었습니다');renderSettings()
+      };
+      row.querySelector('.card-del').onclick=()=>{
+        const c=state.cardCompanies[i];
+        if(state.transactions.some(t=>t.cardCompany===c)&&!confirm('이 카드사가 선택된 정산 내역이 있습니다. 카드사만 삭제할까요?'))return;
+        state.cardCompanies.splice(i,1);if(state.cardFees)delete state.cardFees[c];
+        persist('카드사가 삭제되었습니다');renderSettings()
+      };
+    });
+  };
+  document.getElementById('addCard').onclick=()=>{
+    const v=document.getElementById('newCard').value.trim(),feeRaw=document.getElementById('newCardFee').value.trim().replace(',','.'),fee=feeRaw===''?null:Number(feeRaw);
+    if(!v)return;if(state.cardCompanies.includes(v))return alert('이미 등록된 카드사입니다.');
+    if(fee!=null&&(!Number.isFinite(fee)||fee<0||fee>=10))return alert('수수료율은 0% 이상 10% 미만으로 입력하세요.');
+    state.cardCompanies.push(v);state.cardFees=state.cardFees||{};if(fee!=null)state.cardFees[v]=fee;
+    persist('카드사가 추가되었습니다');renderSettings()
+  };
+  draw()
+}if(currentTab==='rules'){const rules=Object.values(state.rules).sort((a,b)=>(a.cardCompany+String(a.paymentAmount)).localeCompare(b.cardCompany+String(b.paymentAmount)));b.innerHTML='<div class="card"><b>같은 카드사 + 같은 결제금액 실제입금 학습</b><p class="tiny">실제 입금액을 수정해 정산완료하면 이 값이 최우선으로 저장됩니다. 다음 동일 카드사·동일 결제금액에는 이 입금액이 자동 적용됩니다.</p><div id="ruleList"></div></div>';const list=document.getElementById('ruleList');list.innerHTML=rules.length?'<div class="table-wrap" style="max-height:calc(100vh - 210px)"><table style="min-width:750px"><thead><tr><th>카드사</th><th>결제금액</th><th>자동 입금액</th><th>예상 수수료</th><th>관리</th></tr></thead><tbody>'+rules.map(r=>'<tr data-key="'+esc(ruleKey(r.cardCompany,r.paymentAmount))+'"><td>'+esc(r.cardCompany)+'</td><td class="money">'+money(r.paymentAmount)+'</td><td><input class="input rr-settled money" value="'+fmtInput(r.settledAmount)+'"></td><td class="money">'+money(Math.max(0,r.paymentAmount-r.settledAmount))+'</td><td><button class="btn rr-save">수정</button> <button class="btn danger rr-del">삭제</button></td></tr>').join('')+'</tbody></table></div>':'<div class="empty">아직 자동입금 규칙이 없습니다.</div>';list.querySelectorAll('tr[data-key]').forEach(tr=>{const key=tr.dataset.key,r=state.rules[key],inp=tr.querySelector('.rr-settled');inp.oninput=()=>inp.value=fmtInput(inp.value);tr.querySelector('.rr-save').onclick=()=>{r.settledAmount=parseMoney(inp.value);r.updatedAt=new Date().toISOString();syncAllRules();persist('자동입금 규칙이 수정되었습니다');renderSettings()};tr.querySelector('.rr-del').onclick=()=>{if(confirm('이 자동입금 규칙을 삭제할까요?')){delete state.rules[key];persist('규칙이 삭제되었습니다');renderSettings()}}})}if(currentTab==='sales'){
+  const month=document.getElementById("monthFilter")?.value||new Date().toISOString().slice(0,7);
+  const map={};state.cardCompanies.forEach(c=>map[c]={payment:0,settled:0,fee:0,pending:0,count:0});
+  state.transactions.filter(t=>monthOf(t.paymentDate)===month).forEach(t=>ensureSplits(t).forEach(s=>{
+    if(!s.cardCompany)return;
+    if(!map[s.cardCompany])map[s.cardCompany]={payment:0,settled:0,fee:0,pending:0,count:0};
+    const m=map[s.cardCompany];m.payment+=Number(s.amount||0);m.count++;
+    if(splitSettled(s)){m.settled+=Number(s.settledAmount||0);m.fee+=Math.max(0,Number(s.amount||0)-Number(s.settledAmount||0))}
+    else m.pending+=Number(s.amount||0);
+  }));
+  const vals=Object.entries(map).filter(([,v])=>v.count||v.payment);
+  const total=vals.reduce((a,[,v])=>({payment:a.payment+v.payment,settled:a.settled+v.settled,fee:a.fee+v.fee,pending:a.pending+v.pending,count:a.count+v.count}),{payment:0,settled:0,fee:0,pending:0,count:0});
+  const desktop='<div class="sales-table-wrap"><table class="sales-table"><thead><tr><th>카드사</th><th>건수</th><th class="money">결제합계</th><th class="money">정산완료</th><th class="money">수수료</th><th class="money">미정산</th></tr></thead><tbody>'+
+    vals.map(([c,v])=>'<tr><td><b>'+esc(c)+'</b></td><td>'+v.count+'건</td><td class="money">'+money(v.payment)+'</td><td class="money">'+money(v.settled)+'</td><td class="money">'+money(v.fee)+'</td><td class="money">'+money(v.pending)+'</td></tr>').join("")+
+    '<tr style="font-weight:900"><td>전체</td><td>'+total.count+'건</td><td class="money">'+money(total.payment)+'</td><td class="money">'+money(total.settled)+'</td><td class="money">'+money(total.fee)+'</td><td class="money">'+money(total.pending)+'</td></tr></tbody></table></div>';
+  const mobile='<div class="sales-mobile">'+
+    vals.map(([c,v])=>'<div class="sales-mobile-card"><div class="sales-title"><b>'+esc(c)+'</b><span class="tiny">'+v.count+'건</span></div><div class="sales-mobile-grid">'+
+      '<div class="sales-mobile-item"><div class="k">결제합계</div><div class="v">'+money(v.payment)+'</div></div>'+
+      '<div class="sales-mobile-item"><div class="k">정산완료</div><div class="v">'+money(v.settled)+'</div></div>'+
+      '<div class="sales-mobile-item"><div class="k">수수료</div><div class="v">'+money(v.fee)+'</div></div>'+
+      '<div class="sales-mobile-item"><div class="k">미정산</div><div class="v">'+money(v.pending)+'</div></div>'+
+    '</div></div>').join("")+
+    '<div class="sales-mobile-card sales-mobile-total"><div class="sales-title"><b>전체</b><span class="tiny">'+total.count+'건</span></div><div class="sales-mobile-grid">'+
+      '<div class="sales-mobile-item"><div class="k">결제합계</div><div class="v">'+money(total.payment)+'</div></div>'+
+      '<div class="sales-mobile-item"><div class="k">정산완료</div><div class="v">'+money(total.settled)+'</div></div>'+
+      '<div class="sales-mobile-item"><div class="k">수수료</div><div class="v">'+money(total.fee)+'</div></div>'+
+      '<div class="sales-mobile-item"><div class="k">미정산</div><div class="v">'+money(total.pending)+'</div></div>'+
+    '</div></div></div>';
+  b.innerHTML='<div class="card"><b>'+month+' 카드사별 매출/정산</b><div class="tiny" style="margin:5px 0 12px">리더기 카드결제만 집계합니다.</div>'+desktop+mobile+'</div>';
+}
+if(currentTab==='backup'){b.innerHTML='<div class="card"><b>이 프로그램 전체 백업 / 복원</b><p class="tiny">카드사, 리더기 결제내역, 실제 입금액, 자동입금 규칙을 모두 저장합니다.</p><div class="toolbar"><button id="appBackup" class="btn primary">정산자료 백업</button><button id="appRestore" class="btn">정산자료 복원</button><input id="appRestoreFile" class="hidden" type="file" accept=".json,application/json"><button id="clearAll" class="btn danger">전체 정산자료 초기화</button></div></div>';document.getElementById('appBackup').onclick=()=>{const blob=new Blob([JSON.stringify({schema:'sonax-reader-settlement-v1',exportedAt:new Date().toISOString(),data:state},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sonax_reader_settlement_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),800)};document.getElementById('appRestore').onclick=()=>document.getElementById('appRestoreFile').click();document.getElementById('appRestoreFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const j=JSON.parse(rd.result),d=j.data||j;if(!d.transactions||!d.cardCompanies)throw new Error();state=d;persist('정산자료가 복원되었습니다');renderSettings()}catch(_){alert('정산자료 백업 파일이 아닙니다.')}};rd.readAsText(f)};document.getElementById('clearAll').onclick=()=>{if(confirm('정산자료를 전부 지울까요? 카드사 기본목록도 초기화됩니다.')){state=clone(DEFAULT_STATE);persist('전체 정산자료가 초기화되었습니다');renderSettings()}}}}
+const now=new Date();
+if(!document.getElementById('monthFilter').value)document.getElementById('monthFilter').value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+const monthEl=document.getElementById('monthFilter');
+monthEl.value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+document.getElementById('importBackupBtn').onclick=()=>document.getElementById('importBackupFile').click();
+document.getElementById('importBackupFile').onchange=async e=>{
+  const files=[...e.target.files];if(!files.length)return;
+  let a=0,u=0,failed=0;
+  for(const f of files){try{const raw=JSON.parse(await f.text()),res=importReservationBackup(raw,f.name);a+=res.added;u+=res.updated}catch(_){failed++}}
+  e.target.value='';render();toast('리더기 결제 '+a+'건 추가 · '+u+'건 갱신'+(failed?' · 실패 '+failed+'개':''));
+};
+['monthFilter','cardFilter'].forEach(id=>{const el=document.getElementById(id);el.oninput=render;el.onchange=render});
+document.getElementById('openSettings').onclick=()=>{document.getElementById('settings').classList.remove('hidden');renderSettings()};
+document.getElementById('closeSettings').onclick=()=>document.getElementById('settings').classList.add('hidden');document.getElementById("depositSearch").oninput=e=>{e.target.value=fmtInput(e.target.value)};
+document.getElementById("depositSearchBtn").onclick=searchDeposit;
+document.getElementById("depositClearBtn").onclick=()=>{document.getElementById("depositSearch").value="";document.getElementById("searchPopup").classList.add("hidden")};
+document.getElementById("closeTxEdit").onclick=()=>document.getElementById("txEditModal").classList.add("hidden");
+document.getElementById("closeSearchPopup").onclick=()=>document.getElementById("searchPopup").classList.add("hidden");
+document.getElementById("closeDayModal").onclick=()=>document.getElementById("dayModal").classList.add("hidden");
+document.getElementById("editPaymentAmount").oninput=e=>{
+  e.target.value=fmtInput(e.target.value);
+  const t=state.transactions.find(x=>x.id===editingTxId);if(!t)return;
+  t.paymentAmount=parseMoney(e.target.value);
+  updateSplitTotals();
+};
+
+document.getElementById("addCardSplit").onclick=()=>{
+  const t=state.transactions.find(x=>x.id===editingTxId);if(!t)return;
+  const ss=ensureSplits(t);if(ss.length>=2)return alert("카드 분할은 최대 2개까지 지원합니다.");
+  const used=ss.reduce((a,s)=>a+Number(s.amount||0),0),remaining=Math.max(0,Number(t.paymentAmount||0)-used);
+  t.cardSplits.push(makeSplit("",remaining));renderCardSplitRows();
+};
+document.getElementById("saveTxEdit").onclick=()=>{
+  const t=state.transactions.find(x=>x.id===editingTxId);if(!t)return;
+  const newPayment=parseMoney(document.getElementById("editPaymentAmount").value);if(!newPayment)return alert("결제금액을 입력하세요.");
+  t.paymentAmount=newPayment;
+  const ss=ensureSplits(t),sum=ss.reduce((a,s)=>a+Number(s.amount||0),0);
+  if(sum!==newPayment)return alert("카드별 결제금액 합계가 전체 결제금액과 같아야 합니다.");
+  for(const s of ss){if(!s.cardCompany)return alert("모든 카드사를 선택하세요.");if(!s.amount)return alert("카드별 결제금액을 입력하세요.");if(!splitSettled(s))s.expectedSettledAmount=Number(s.expectedSettledAmount||expectedSettledAmount(s.cardCompany,s.amount)||0)}
+  t.memo=document.getElementById("editMemo").value.trim();syncLegacyFromSplits(t);
+  persist("카드 분할과 예상 정산금이 저장되었습니다");document.getElementById("txEditModal").classList.add("hidden");
+};
+document.getElementById("completeSettlement").onclick=()=>{
+  const t=state.transactions.find(x=>x.id===editingTxId);if(!t)return;
+  const ss=ensureSplits(t),newPayment=parseMoney(document.getElementById("editPaymentAmount").value);if(!newPayment)return alert("결제금액을 입력하세요.");
+  if(ss.reduce((a,s)=>a+Number(s.amount||0),0)!==newPayment)return alert("카드별 결제금액 합계가 전체 결제금액과 같아야 합니다.");
+  const date=document.getElementById("editSettlementDate").value||dateKey(new Date().toISOString());
+  for(const s of ss){
+    if(!s.cardCompany)return alert("카드사를 모두 선택하세요.");
+    const actual=Number(s.expectedSettledAmount||splitExpected(s));if(!actual)return alert("카드별 입금액을 확인하세요.");
+    s.settledAmount=actual;s.expectedSettledAmount=actual;s.settlementCompleted=true;s.settlementDate=date;
+    state.rules[ruleKey(s.cardCompany,s.amount)]={cardCompany:s.cardCompany,paymentAmount:Number(s.amount),settledAmount:Number(actual),updatedAt:new Date().toISOString()};
+  }
+  t.paymentAmount=newPayment;t.memo=document.getElementById("editMemo").value.trim();syncLegacyFromSplits(t);
+  persist("전체 카드 정산완료 처리되었습니다");document.getElementById("txEditModal").classList.add("hidden");
+};
+document.getElementById("editClearSettlement").onclick=()=>{
+  const t=state.transactions.find(x=>x.id===editingTxId);if(!t)return;
+  ensureSplits(t).forEach(s=>{s.settlementCompleted=false;s.settledAmount=0;s.settlementDate="";s.batchId="";s.expectedSettledAmount=s.cardCompany?expectedSettledAmount(s.cardCompany,s.amount):0});
+  syncLegacyFromSplits(t);persist("미정산으로 변경되었습니다");document.getElementById("txEditModal").classList.add("hidden");
+};
+document.getElementById("deleteTxEdit").onclick=()=>{const t=state.transactions.find(x=>x.id===editingTxId);if(!t)return;if(confirm(t.paymentDate+" "+money(t.paymentAmount)+" 항목을 삭제할까요?")){state.transactions=state.transactions.filter(x=>x.id!==editingTxId);persist("항목이 삭제되었습니다");document.getElementById("txEditModal").classList.add("hidden");if(parseMoney(document.getElementById("depositSearch").value))searchDeposit()}};
+
+document.getElementById("closeBatchPopup").onclick=()=>document.getElementById("batchPopup").classList.add("hidden");
+document.getElementById("batchComplete").onclick=()=>{
+  const keys=[...document.querySelectorAll(".batch-check:checked")].map(x=>x.value);
+  if(!keys.length)return alert("정산할 결제 건을 선택하세요.");
+  const parts=keys.map(k=>batchCandidateMap[k]).filter(Boolean);
+  const expected=parts.reduce((a,x)=>a+Number(splitExpected(x.s)||0),0);
+  const diff=batchDepositValue-expected;
+  if(Math.abs(diff)>100&&!confirm("예상 입금합계와 실제 입금액 차이가 "+(diff<0?"-":"")+money(Math.abs(diff))+"입니다. 그래도 정산완료 할까요?"))return;
+  // 실제 입금액을 선택건의 예상입금 비율로 배분. 마지막 건에 반올림 차액 반영.
+  let allocated=0;
+  parts.forEach((x,i)=>{
+    const exp=Number(splitExpected(x.s)||0);
+    const actual=i===parts.length-1?Math.max(0,batchDepositValue-allocated):Math.max(0,Math.round(batchDepositValue*(exp/Math.max(1,expected))));
+    allocated+=actual;
+    x.s.settledAmount=actual;x.s.expectedSettledAmount=actual;x.s.settlementCompleted=true;x.s.settlementDate=dateKey(new Date().toISOString());
+    x.s.batchId="batch_"+Date.now();
+    state.rules[ruleKey(x.s.cardCompany,x.s.amount)]={cardCompany:x.s.cardCompany,paymentAmount:Number(x.s.amount),settledAmount:Number(actual),updatedAt:new Date().toISOString()};
+    syncLegacyFromSplits(x.t);
+  });
+  state.batches=state.batches||[];state.batches.push({id:"batch_"+Date.now(),date:new Date().toISOString(),depositAmount:batchDepositValue,parts:parts.map(x=>({transactionId:x.t.id,splitId:x.s.id,cardCompany:x.s.cardCompany,paymentAmount:x.s.amount,settledAmount:x.s.settledAmount}))});
+  persist("선택한 결제를 묶음 정산완료 처리했습니다");document.getElementById("batchPopup").classList.add("hidden");
+};
+renderBatchCardPanel();
+document.getElementById("batchCardSelect").addEventListener("toggle",()=>{if(document.getElementById("batchCardSelect").open)renderBatchCardPanel()});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{currentTab=b.dataset.tab;renderSettings()});render();
+</script>
+
+<style id="sonaxCloudStyle">
+#sonaxCloudLogin{position:fixed;inset:0;z-index:999999;background:#0b0f14;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit}
+#sonaxCloudLogin.hidden{display:none}.sonax-login-card{width:min(430px,100%);background:#151b23;border:1px solid #2a3441;border-radius:20px;padding:26px;box-shadow:0 24px 70px #0008;color:#fff}.sonax-login-title{font-size:25px;font-weight:900;margin-bottom:6px}.sonax-login-sub{font-size:13px;color:#aeb8c5;margin-bottom:20px;line-height:1.55}.sonax-login-card input{width:100%;box-sizing:border-box;margin:7px 0;padding:13px 14px;border-radius:11px;border:1px solid #354153;background:#0d1218;color:#fff;font-size:16px}.sonax-login-card button{width:100%;margin-top:10px;padding:13px;border:0;border-radius:11px;background:#2563eb;color:#fff;font-weight:900;font-size:16px}.sonax-login-card button:disabled{opacity:.55}.sonax-login-msg{min-height:20px;margin-top:10px;font-size:13px;color:#fca5a5;white-space:pre-wrap}.sonax-cloudbar{position:fixed;right:10px;bottom:10px;z-index:99990;display:flex;align-items:center;gap:7px;background:#111827ef;border:1px solid #374151;border-radius:999px;padding:7px 10px;color:#d1d5db;font-size:11px;box-shadow:0 4px 16px #0007}.sonax-cloud-dot{width:8px;height:8px;border-radius:50%;background:#f59e0b}.sonax-cloud-dot.ok{background:#22c55e}.sonax-cloud-dot.err{background:#ef4444}.sonax-cloudbar button{border:0;background:#374151;color:#fff;border-radius:999px;padding:4px 8px;font-size:11px}
+</style>
+<div id="sonaxCloudLogin">
+ <div class="sonax-login-card">
+  <div class="sonax-login-title">소낙스 하남 카드정산</div>
+  <div class="sonax-login-sub">직원 계정으로 로그인하면 카드사·수수료·정산내역·자동입금 규칙이 같은 매장 데이터로 자동 동기화됩니다.</div>
+  <input id="sonaxLoginEmail" type="email" autocomplete="username" placeholder="이메일">
+  <input id="sonaxLoginPassword" type="password" autocomplete="current-password" placeholder="비밀번호">
+  <button id="sonaxLoginBtn" type="button">로그인</button>
+  <div id="sonaxLoginMsg" class="sonax-login-msg"></div>
+ </div>
+</div>
+<div id="sonaxCloudBar" class="sonax-cloudbar" style="display:none"><span id="sonaxCloudDot" class="sonax-cloud-dot"></span><span id="sonaxCloudText">연결 확인 중</span><button id="sonaxSyncNow" type="button">동기화</button><button id="sonaxLogout" type="button">로그아웃</button></div>
+<script>
+/* ===== vFINAL 실제 DB 자동동기화 ===== */
+(function(){
+const SB_URL='https://iyyrmiogydegcesuohbo.supabase.co',SB_KEY='sb_publishable_s-bgH8njTsVW6XSu0oen2w__btoQh-6';
+const APP_KEY='reader',COLUMN='reader_data',AUTH_KEY='sonax_cloud_auth_v1',APPLIED='sonax_cloud_applied_reader_final',READER_KEY='sonax_reader_settlement_v1';
+let session=null,shopId=null,syncing=false,applying=false,timer=null;
+const login=document.getElementById('sonaxCloudLogin'),msg=document.getElementById('sonaxLoginMsg'),bar=document.getElementById('sonaxCloudBar'),dot=document.getElementById('sonaxCloudDot'),txt=document.getElementById('sonaxCloudText');
+const nativeSet=Storage.prototype.setItem,nativeRemove=Storage.prototype.removeItem;
+function setState(s,c){txt.textContent=s;dot.className='sonax-cloud-dot'+(c?' '+c:'')}
+function err(e){setState('오류: '+((e&&e.message)||e),'err');bar.style.display='flex';console.error(e)}
+function hdr(x){return Object.assign({'apikey':SB_KEY,'Authorization':'Bearer '+session.access_token},x||{})}
+async function req(path,opt={}){const r=await fetch(SB_URL+path,opt),text=await r.text();let b;try{b=text?JSON.parse(text):null}catch(_){b=text}if(!r.ok)throw new Error((b&&b.message)||('서버 오류 '+r.status));return b}
+async function shop(){const u=session&&session.user&&session.user.id;if(!u)throw new Error('로그인이 필요합니다.');const a=await req('/rest/v1/sonax_shop_members?select=shop_id&user_id=eq.'+encodeURIComponent(u)+'&limit=1',{headers:hdr()});if(!a||!a.length)throw new Error('매장 연결 정보를 찾을 수 없습니다.');shopId=a[0].shop_id}
+async function row(){const q='user_id,shop_id,'+COLUMN+',updated_at';const a=await req('/rest/v1/sonax_data?select='+encodeURIComponent(q)+'&shop_id=eq.'+encodeURIComponent(shopId)+'&order=updated_at.desc&limit=1',{headers:hdr()});return a&&a[0]||null}
+function payload(){const storage={};const v=localStorage.getItem(READER_KEY);if(v!==null)storage[READER_KEY]=v; return {backupSchema:'sonax-cloud-final',appKey:APP_KEY,savedAt:new Date().toISOString(),storage}}
+function getp(r){const p=r&&r[COLUMN];return p&&p.appKey===APP_KEY&&p.storage&&typeof p.storage==='object'?p:null}
+function apply(p){if(!p)return false;applying=true;try{const v=p.storage[READER_KEY];if(typeof v==='string')nativeSet.call(localStorage,READER_KEY,v);}finally{applying=false}return true}
+async function push(){if(syncing||applying||!session||!shopId)return;syncing=true;setState('자동 저장 중…','');try{const r=await row();if(!r)throw new Error('매장 공용 데이터 행을 찾을 수 없습니다.');const p=payload(),b={updated_at:new Date().toISOString()};b[COLUMN]=p;await req('/rest/v1/sonax_data?shop_id=eq.'+encodeURIComponent(shopId),{method:'PATCH',headers:hdr({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(b)});nativeSet.call(localStorage,APPLIED,p.savedAt);setState('동기화 완료 · '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),'ok')}catch(e){err(e)}finally{syncing=false}}
+function schedule(){if(!session||!shopId||applying)return;clearTimeout(timer);timer=setTimeout(push,900)}
+async function pull(force){if(syncing||applying||!session||!shopId)return false;try{const r=await row(),p=getp(r);if(!p)return false;if(force||String(p.savedAt||'')!==localStorage.getItem(APPLIED)){apply(p);nativeSet.call(localStorage,APPLIED,String(p.savedAt||''));setState('동기화 완료 · '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),'ok');try{state=loadState();render()}catch(_){}}return true}catch(e){err(e);return false}}
+async function start(){if(!session){login.classList.remove('hidden');bar.style.display='none';return}login.classList.add('hidden');bar.style.display='flex';setState('연결 확인 중…','');try{await shop();const r=await row(),p=getp(r);if(p){if(String(p.savedAt||'')!==localStorage.getItem(APPLIED)){apply(p);nativeSet.call(localStorage,APPLIED,String(p.savedAt||''));try{state=loadState();render()}catch(_){}}setState('동기화 연결됨','ok')}else{await push()}}catch(e){err(e)}}
+async function doLogin(){const email=document.getElementById('sonaxLoginEmail').value.trim(),password=document.getElementById('sonaxLoginPassword').value,b=document.getElementById('sonaxLoginBtn');if(!email||!password){msg.textContent='이메일과 비밀번호를 입력하세요.';return}b.disabled=true;try{const s=await req('/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});session={...s,expires_at:Math.floor(Date.now()/1000)+(s.expires_in||3600)};nativeSet.call(localStorage,AUTH_KEY,JSON.stringify(session));msg.textContent='';await start()}catch(e){msg.textContent='로그인 실패: '+e.message}finally{b.disabled=false}}
+try{session=JSON.parse(localStorage.getItem(AUTH_KEY)||'null')}catch(_){session=null}if(session){login.classList.add('hidden');bar.style.display='flex'}
+document.getElementById('sonaxLoginBtn').onclick=doLogin;document.getElementById('sonaxLoginPassword').onkeydown=e=>{if(e.key==='Enter')doLogin()};
+document.getElementById('sonaxSyncNow').onclick=async()=>{setState('수동 동기화 중…','');await shop();const ok=await pull(true);if(!ok)await push()};
+document.getElementById('sonaxLogout').onclick=()=>{nativeRemove.call(localStorage,AUTH_KEY);nativeRemove.call(localStorage,APPLIED);location.reload()};
+Storage.prototype.setItem=function(k,v){nativeSet.call(this,k,v);if(this===localStorage&&(String(k)===READER_KEY))schedule()};Storage.prototype.removeItem=function(k){nativeRemove.call(this,k);if(this===localStorage&&(String(k)===READER_KEY))schedule()};
+window.addEventListener('DOMContentLoaded',start);window.addEventListener('focus',()=>pull(false));setInterval(()=>{if(!document.hidden)pull(false)},15000);
+})();
+</script>
+
+</body></html>
